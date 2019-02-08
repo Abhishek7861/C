@@ -9,6 +9,7 @@
 
 #define SLOT_COUNT_OFFSET 2
 #define checkerr(err) {if (err < 0) {PF_PrintError(); exit(EXIT_FAILURE);}}
+#define MAX_PAGE_SIZE 4000
 
 int  getLen(int slot, byte *pageBuf);
 int  getNumSlots(byte *pageBuf);
@@ -30,12 +31,12 @@ int Table_Open(char *dbname, Schema *schema, bool overwrite, Table **ptable)
     {   
         (**ptable).FileDesc=PF_OpenFile(dbname);
         (**ptable).tablename = dbname;
+        memset((**ptable).dirtypageNUM,0,sizeof((**ptable).dirtypageNUM));
+        (**ptable).pages=0;
         (**ptable).schema = (Schema*)malloc(sizeof(schema));
         (**ptable).schema->columns = (ColumnDesc**)malloc(sizeof(ColumnDesc)*(*schema).numColumns);
         (*((**ptable).schema)).columns = (*schema).columns;
         (*((**ptable).schema)).numColumns = (*schema).numColumns;
-
-        printf("FD :%d\n",(**ptable).FileDesc);
     }else
     {
         printf("ERROR CREATING FILE OR FILE ALREADY EXISTS\n");
@@ -48,8 +49,29 @@ int Table_Open(char *dbname, Schema *schema, bool overwrite, Table **ptable)
     // on record storage. 
 }
 
-void
-Table_Close(Table *tbl) {
+void Table_Close(Table *tbl) {
+    for(int i=0;i<tbl->pages;i++)
+        {
+           int retval = PF_UnfixPage(tbl->FileDesc,i,tbl->dirtypageNUM[i]);
+           if(retval!=PFE_OK)
+           {
+               printf("ERROR UNFIXING PAGE\n");
+           }
+           else
+           {
+               printf("FIXED PAGE %d\n",i);
+           }
+           
+        }
+    int retval = PF_CloseFile(tbl->FileDesc);
+    if(retval!=PFE_OK)
+    {
+        printf("ERROR CLOSING FILE\n");
+    }
+    else
+    {
+        printf("CLOSED FILE\n");
+    }
     
     
 }
@@ -59,12 +81,16 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     
     int fileDes = tbl->FileDesc;
     int pageNO = 0;
+    tbl->pages = tbl->pages+1;
+    tbl->dirtypageNUM[pageNO]=1;
     int *pageNum=&pageNO;
-    char **pageBuf;
+    char BUFFER[MAX_PAGE_SIZE];
+    char **pageBuf = &BUFFER;
     int retval = PF_AllocPage(fileDes,pageNum,pageBuf);
     if(retval==PFE_OK)
     {
         strcpy(*pageBuf,record);
+        memset(record, 0, sizeof(record));
         printf("%s INTO A PAGE %d\n",*pageBuf,*pageNum);
         int retval = ((*pageNum)<<8)+(*rid);
         return retval;
@@ -99,10 +125,52 @@ int Table_Get(Table *tbl, RecId rid, byte *record, int maxlen) {
     return 1;
 }
 
-void Table_Scan(Table *tbl, void *callbackObj, ReadFunc callbackfn) {
-
-    
-
+void Table_Scan(Table *tbl) {
+    int errVal;
+    int fileDes = tbl->FileDesc;
+    int pageNum = 0;
+    int pages = tbl->pages;
+    char BUFFER[MAX_PAGE_SIZE+2];
+    char *tokens[4000];
+    int i=0;
+    char string[100];
+    char **pageBuf = &BUFFER;
+    printf("%s:%s:%s\n",tbl->schema->columns[0]->name,tbl->schema->columns[1]->name,tbl->schema->columns[2]->name);
+    errVal = PF_GetFirstPage(fileDes,&pageNum,pageBuf);
+    strcpy(BUFFER,*pageBuf);
+    // strcat(BUFFER,"<>");
+        // printf("%s\n",BUFFER);
+        // printf("HELLO\n");
+    int n = split(BUFFER, "~", tokens);
+    // memset(BUFFER, 0, sizeof(BUFFER));
+    while(tokens[i]!=NULL){
+        strcpy(string,tokens[i]);
+        tokens[i++]=NULL;
+        printf("%s\n",string);
+    }
+    // memset(BUFFER, 0, sizeof(BUFFER));
+    for(i=pageNum;i<=pageNum;i++)
+    {
+        errVal = PF_GetNextPage(fileDes,&pageNum,pageBuf);
+        if(errVal==PFE_OK)
+        {
+            strcpy(BUFFER,*pageBuf);
+            // printf("%s\n",BUFFER);
+                n = split(BUFFER, "~", tokens);
+            while(tokens[i]!=NULL){
+                 strcpy(string,tokens[i]);
+                tokens[i++]=NULL;
+                printf("%s\n",string);
+            } 
+            // memset(BUFFER, 0, sizeof(BUFFER));
+        }
+        else
+        {
+            printf("ERROR GETTING NEXT PAGE\n");
+        }
+        
+    }
+    printf("DONE\n");
     // For each page obtained using PF_GetFirstPage and PF_GetNextPage
     //    for each record in that page,
     //          callbackfn(callbackObj, rid, record, recordLen)

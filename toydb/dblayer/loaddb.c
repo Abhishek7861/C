@@ -27,7 +27,7 @@ int encode(Schema *sch, char **fields, byte *record, int spaceLeft) {
     // UNIMPLEMENTED;
        spaceLeft = spaceLeft+strlen(fields[0])+1;
        spaceLeft = spaceLeft+strlen(fields[1])+1;
-       spaceLeft = spaceLeft+strlen(fields[2])+1;
+       spaceLeft = spaceLeft+strlen(fields[2])+2;
     //    printf("%s\n",record);
        return spaceLeft;
 
@@ -65,9 +65,9 @@ Schema *loadCSV() {
     char *tokens[MAX_TOKENS];
     char record[MAX_PAGE_SIZE];
     char check[MAX_PAGE_SIZE];
-    RecId rid;
-    int len;
-    while (((line = fgets(buf, MAX_LINE_LEN, fp)) != NULL)&& strcmp(line,"\n")!=1){
+    RecId rid=0;
+    int len=0;
+    while (((line = fgets(buf, MAX_LINE_LEN, fp))) !=NULL){
 	int n = split(line, ",", tokens);
     // printf("%s\n",*tokens);
 	// assert (n == sch->numColumns);
@@ -77,7 +77,7 @@ Schema *loadCSV() {
        strcat(check,tokens[1]);
        strcat(check,":");
        strcat(check,tokens[2]);
-       strcat(check,"/");
+       strcat(check,"~");
     if((MAX_PAGE_SIZE-len)<0){
 	    rid =  Table_Insert(tbl, record, len, &rid);
         printf("INSETRED A PAGE\n");
@@ -86,18 +86,24 @@ Schema *loadCSV() {
     }
     strcat(record,check);
     memset(check, 0, sizeof(check));
+    printf("rid:%d\n",rid);
     rid++;
 
 	int population = atoi(tokens[2]);
     printf("%d\n",population);
+    // AM_InsertEntry(population,rid);
 	checkerr(err);
     }
-
+    rid =  Table_Insert(tbl, record, len, &rid);
+    printf("INSETRED A PAGE\n");
      int indexFD = tbl->FileDesc;
      fclose(fp);
      Table_Close(tbl);
-     err = PF_CloseFile(indexFD);
-    //  checkerr(err);
+     PF_CloseFile(indexFD);
+     err = Table_Open(dbname, sch, true,&tbl);
+     Table_Scan(tbl);
+     checkerr(err);
+     printf("DONE\n");
      return sch;
 }
 

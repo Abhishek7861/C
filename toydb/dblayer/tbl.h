@@ -22,6 +22,8 @@ typedef struct {
     Schema *schema;
     char *tablename;
     int FileDesc;
+    int dirtypageNUM[100];
+    int pages;
 } Table ;
 
 typedef int RecId;
@@ -40,7 +42,6 @@ Table_Close(Table *);
 
 typedef void (*ReadFunc)(void *callbackObj, RecId rid, byte *row, int len);
 
-void
-Table_Scan(Table *tbl, void *callbackObj, ReadFunc callbackfn);
+void Table_Scan(Table *tbl);
 
 #endif

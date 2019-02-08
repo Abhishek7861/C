@@ -16,7 +16,7 @@ printRow(void *callbackObj, RecId rid, byte *row, int len) {
     // UNIMPLEMENTED;
 }
 
-#define DB_NAME "data.db"
+#define DB_NAME "toydb"
 #define INDEX_NAME "data.db.0"
 	 
 void
@@ -38,11 +38,10 @@ main(int argc, char **argv) {
     char *schemaTxt = "Country:varchar,Capital:varchar,Population:int";
     Schema *schema = parseSchema(schemaTxt);
     Table *tbl;
-
-    // UNIMPLEMENTED;
+    char *dbname  = "toydb";
+    int err = Table_Open(dbname, schema, true,&tbl);
     if (argc == 2 && *(argv[1]) == 's') {
-	// UNIMPLEMENTED;
-	// invoke Table_Scan with printRow, which will be invoked for each row in the table.
+        Table_Scan(tbl);
     } else {
 	// index scan by default
 	int indexFD = PF_OpenFile(INDEX_NAME);
