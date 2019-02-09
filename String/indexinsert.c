@@ -15,7 +15,6 @@ r = strlen(a);
 n = strlen(b);
 i=0;
 
-// Copying the input string into another array
 while(i <= r)
 {
  c[i]=a[i];
@@ -24,7 +23,6 @@ while(i <= r)
 s = n+r;
 o = p+n;
 
-// Adding the sub-string
 for(i=p;i<s;i++)
 {
  x = c[i];
@@ -37,16 +35,17 @@ for(i=p;i<s;i++)
  o=o+1;
 }
 return a;
-// getch();
+
 }
 
 
 int main()
 {
-    char a[4000]="55555555555555555555555555555";
+    char a[4000];
     char b[4000]="0000";
     int p=2;
-    insertSTR(a,b,10);
+    insertSTR(a,b,0);
+    insertSTR(a,b,0);
     printf("%s\n", a);
 }
 
