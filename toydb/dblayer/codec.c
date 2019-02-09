@@ -119,10 +119,10 @@ stricmp(char const *a, char const *b)
 // main() {
 //     char *test = "HelloWorld";
 
-//     char buf[4];
-//     EncodeInt(1000, buf);
-//     long long l = DecodeInt(buf);
-//     printf("%d \n", l);
+    // char buf[4];
+    // EncodeInt(1000, buf);
+    // long long l = DecodeInt(buf);
+    // printf("%d \n", l);
     
 //     EncodeInt(5000, buf);
 //      l = DecodeInt(buf);
