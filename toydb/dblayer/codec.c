@@ -114,27 +114,30 @@ stricmp(char const *a, char const *b)
     }
 }
 
-/*
-int
-main() {
-    char *test = "HelloWorld";
 
-    char buf[8];
-    EncodeLong(123443211234, buf);
+// int
+// main() {
+//     char *test = "HelloWorld";
 
-    long long l = DecodeLong(buf);
-    printf("%lld \n", l);
-
-    EncodeShort((short)strlen(test), buf);
-    printf ("%d\n", DecodeShort(buf));
-
-    char sbuf[100];
-    int len = EncodeCString(test, sbuf, sizeof(sbuf));
-
-    printf ("Encoded %d bytes\n", len);
+//     char buf[8];
+//     EncodeInt(1, buf);
+//     long long l = DecodeInt(buf);
+//     printf("%d \n", l);
     
-    char str[20];
-    DecodeCString(sbuf, str, sizeof(sbuf));
-    printf ("'%s'\n", str);
-}
-*/
+//     EncodeInt(2, buf+2);
+//      l = DecodeInt(buf+2);
+//     printf("%d \n", l);
+
+//     EncodeShort((short)strlen(test), buf);
+//     printf ("%d\n", DecodeShort(buf));
+
+//     char sbuf[100];
+//     int len = EncodeCString(test, sbuf, sizeof(sbuf));
+
+//     printf ("Encoded %d bytes\n", len);
+    
+//     char str[20];
+//     DecodeCString(sbuf, str, sizeof(sbuf));
+//     printf ("'%s'\n", str);
+// }
+

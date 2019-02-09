@@ -23,6 +23,53 @@ int  getNthSlotOffset(int slot, char* pageBuf);
    Returns 0 on success and a negative error code otherwise.
    If successful, it returns an initialized Table*.
  */
+void insertSTR(char* a,char* b,int p)
+{
+char c[4000];
+int r=0,i=0;
+int t=0;
+int x,g,s,n,o;
+
+r = strlen(a);
+n = strlen(b);
+i=0;
+
+while(i <= r)
+{
+ c[i]=a[i];
+ i++;
+}
+s = n+r;
+o = p+n;
+
+for(i=p;i<s;i++)
+{
+ x = c[i];
+ if(t<n)
+ {
+  a[i] = b[t];
+  t=t+1;
+ }
+ a[o]=x;
+ o=o+1;
+}
+
+}
+
+
+void substr(char *string,char *retstr,int pos,int length)
+{
+
+    int c=0;
+    while(c<length)
+    {
+        retstr[c] = string[c+pos];
+        c++;
+    }    
+}
+
+
+
 int Table_Open(char *dbname, Schema *schema, bool overwrite, Table **ptable)
 {
     PF_Init();
@@ -37,9 +84,11 @@ int Table_Open(char *dbname, Schema *schema, bool overwrite, Table **ptable)
         (**ptable).schema->columns = (ColumnDesc**)malloc(sizeof(ColumnDesc)*(*schema).numColumns);
         (*((**ptable).schema)).columns = (*schema).columns;
         (*((**ptable).schema)).numColumns = (*schema).numColumns;
+        return retval;
     }else
     {
         printf("ERROR CREATING FILE OR FILE ALREADY EXISTS\n");
+        return retval;
     }
     
     // Initialize PF, create PF file,
@@ -77,27 +126,83 @@ void Table_Close(Table *tbl) {
 }
 
 
+
+
+
 int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     
     int fileDes = tbl->FileDesc;
-    int pageNO = 0;
-    tbl->pages = tbl->pages+1;
-    tbl->dirtypageNUM[pageNO]=1;
-    int *pageNum=&pageNO;
+    int pageNum = 0;
     char BUFFER[MAX_PAGE_SIZE];
     char **pageBuf = &BUFFER;
-    int retval = PF_AllocPage(fileDes,pageNum,pageBuf);
+    int freeSpace=0;
+    int noOfRecord=0;
+    char freeSpaceS[3];
+    char noOfRecordS[3];
+    char srid[3];
+
+    int retval = PF_GetFirstPage(fileDes,&pageNum,pageBuf);
+    if(retval!=PFE_OK)
+    {
+        retval = PF_AllocPage(fileDes,&pageNum,pageBuf);
+        if(retval!=PFE_OK){
+            printf("ERROR GETTING NEW PAGE\n");
+            return -1;
+        }
+        // strcpy(BUFFER,*pageBuf);
+        // memset(BUFFER,0,sizeof(BUFFER));
+        freeSpace=MAX_PAGE_SIZE-6;
+        noOfRecord = 0;
+        EncodeInt(freeSpace,freeSpaceS);
+        freeSpace = DecodeInt(freeSpaceS);
+        printf("%d\n",freeSpace);
+        EncodeInt(noOfRecord,noOfRecordS);
+        insertSTR(*pageBuf,freeSpaceS,0);
+        insertSTR(*pageBuf,noOfRecordS,3);    
+        }
+    else
+    {
+        //  strcpy(BUFFER,*pageBuf);
+         substr(*pageBuf,freeSpaceS,0,3);
+         substr(*pageBuf,noOfRecordS,3,6);
+         freeSpace = DecodeInt(freeSpaceS);
+         noOfRecord = DecodeInt(noOfRecordS);
+    }
+    
+    if(freeSpace<strlen(record))
+    {
+        retval = PF_AllocPage(fileDes,&pageNum,pageBuf);
+        if(retval!=PFE_OK){
+            printf("ERROR GETTING NEW PAGE\n");
+            return -1;
+        }
+        // strcpy(BUFFER,*pageBuf);
+        freeSpace=MAX_PAGE_SIZE-8;
+        noOfRecord = 0;
+        EncodeInt(freeSpace,freeSpaceS);
+        EncodeInt(noOfRecord,noOfRecordS);
+        strcat(*pageBuf,freeSpaceS);
+        strcat(*pageBuf,noOfRecordS);
+    }    
+    noOfRecord = noOfRecord;
+    freeSpace = freeSpace-strlen(record);
+    EncodeInt(freeSpace,freeSpaceS);
+    EncodeInt(noOfRecord,noOfRecordS);
+    EncodeInt(*rid,srid);
+    insertSTR(*pageBuf,freeSpaceS,0);
+    insertSTR(*pageBuf,noOfRecordS,3);
+    insertSTR(*pageBuf,srid,6+(noOfRecord*3));
+    insertSTR(*pageBuf,record,freeSpace);
+    // strcpy(*pageBuf,BUFFER);
+    retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
     if(retval==PFE_OK)
     {
-        strcpy(*pageBuf,record);
-        memset(record, 0, sizeof(record));
-        printf("%s INTO A PAGE %d\n",*pageBuf,*pageNum);
-        int retval = ((*pageNum)<<8)+(*rid);
-        return retval;
+        return *rid;
     }
     else
     {
-        printf("ERROR ALLOCATING PAGE");
+        printf("ERROR UNFIXING PAGE\n");
+        return -1;
     }
     
     // Allocate a fresh page if len is not enough for remaining space
