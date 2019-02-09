@@ -25,35 +25,11 @@ int  getNthSlotOffset(int slot, char* pageBuf);
  */
 void insertSTR(char* a,char* b,int p)
 {
-char c[4000];
-int r=0,i=0;
-int t=0;
-int x,g,s,n,o;
-
-r = strlen(a);
-n = strlen(b);
-i=0;
-
-while(i <= r)
+int n = strlen(b);
+for(int i=p;i<p+n;i++)
 {
- c[i]=a[i];
- i++;
+    a[i]=b[i-p];
 }
-s = n+r;
-o = p+n;
-
-for(i=p;i<s;i++)
-{
- x = c[i];
- if(t<n)
- {
-  a[i] = b[t];
-  t=t+1;
- }
- a[o]=x;
- o=o+1;
-}
-
 }
 
 
@@ -133,43 +109,46 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     
     int fileDes = tbl->FileDesc;
     int pageNum = 0;
-    char BUFFER[MAX_PAGE_SIZE];
-    char **pageBuf = &BUFFER;
+    char *pageBuf=(char*)malloc(sizeof(char)*MAX_PAGE_SIZE);
     int freeSpace=0;
     int noOfRecord=0;
     char freeSpaceS[3];
     char noOfRecordS[3];
     char srid[3];
 
-    int retval = PF_GetFirstPage(fileDes,&pageNum,pageBuf);
+    int retval = PF_GetFirstPage(fileDes,&pageNum,&pageBuf);
     if(retval!=PFE_OK)
     {
-        retval = PF_AllocPage(fileDes,&pageNum,pageBuf);
+        retval = PF_AllocPage(fileDes,&pageNum,&pageBuf);
         if(retval!=PFE_OK){
             printf("ERROR GETTING NEW PAGE\n");
             return -1;
         }
         // strcpy(BUFFER,*pageBuf);
-        // memset(BUFFER,0,sizeof(BUFFER));
-        freeSpace=MAX_PAGE_SIZE-6;
-        noOfRecord = 0;
+        memset(pageBuf,'!',4000);
+        printf("%s\n",pageBuf);
+        freeSpace=(MAX_PAGE_SIZE+1000)-4;
+        noOfRecord = 1000;
         EncodeInt(freeSpace,freeSpaceS);
         freeSpace = DecodeInt(freeSpaceS);
         printf("%d\n",freeSpace);
         EncodeInt(noOfRecord,noOfRecordS);
-        insertSTR(*pageBuf,freeSpaceS,0);
-        insertSTR(*pageBuf,noOfRecordS,3);    
+        noOfRecord = DecodeInt(noOfRecordS);
+        printf("%d\n",noOfRecord);
+        insertSTR(pageBuf,freeSpaceS,0);
+        insertSTR(pageBuf,noOfRecordS,2);
+        printf("%s\n",pageBuf);    
         }
     else
     {
-        //  strcpy(BUFFER,*pageBuf);
-         substr(*pageBuf,freeSpaceS,0,3);
-         substr(*pageBuf,noOfRecordS,3,6);
+        //  strcpy(BUFFER,*pageBuf);BUFFER
+         substr(pageBuf,freeSpaceS,0,2);
+         substr(pageBuf,noOfRecordS,2,4);
          freeSpace = DecodeInt(freeSpaceS);
          noOfRecord = DecodeInt(noOfRecordS);
     }
     
-    if(freeSpace<strlen(record))
+    if((freeSpace-1000)<strlen(record))
     {
         retval = PF_AllocPage(fileDes,&pageNum,pageBuf);
         if(retval!=PFE_OK){
@@ -177,22 +156,37 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
             return -1;
         }
         // strcpy(BUFFER,*pageBuf);
-        freeSpace=MAX_PAGE_SIZE-8;
-        noOfRecord = 0;
+        freeSpace=(MAX_PAGE_SIZE+1000)-4;
+        noOfRecord = 1000;
         EncodeInt(freeSpace,freeSpaceS);
         EncodeInt(noOfRecord,noOfRecordS);
-        strcat(*pageBuf,freeSpaceS);
-        strcat(*pageBuf,noOfRecordS);
+        insertSTR(pageBuf,freeSpaceS,0);
+        insertSTR(pageBuf,noOfRecordS,2);
     }    
-    noOfRecord = noOfRecord;
+      int index;
+      char indexs[5];
     freeSpace = freeSpace-strlen(record);
+    noOfRecord = noOfRecord-1000;
+    if((noOfRecord)==0){
+        index = MAX_PAGE_SIZE-strlen(record);
+        EncodeInt(index,indexs);
+        insertSTR(pageBuf,record,index);
+        insertSTR(pageBuf,indexs,4);
+    }
+    else
+    {
+        substr(pageBuf,indexs,4+((noOfRecord-1)*2),2);
+        index = DecodeInt(indexs);
+        index = index-strlen(record);
+        insertSTR(pageBuf,record,index);
+        EncodeInt(index,indexs);
+        insertSTR(pageBuf,indexs,4+(noOfRecord*2));
+    }
+    noOfRecord = (noOfRecord+1000)+1;
     EncodeInt(freeSpace,freeSpaceS);
     EncodeInt(noOfRecord,noOfRecordS);
-    EncodeInt(*rid,srid);
-    insertSTR(*pageBuf,freeSpaceS,0);
-    insertSTR(*pageBuf,noOfRecordS,3);
-    insertSTR(*pageBuf,srid,6+(noOfRecord*3));
-    insertSTR(*pageBuf,record,freeSpace);
+    insertSTR(pageBuf,freeSpaceS,0);
+    insertSTR(pageBuf,noOfRecordS,2);
     // strcpy(*pageBuf,BUFFER);
     retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
     if(retval==PFE_OK)
