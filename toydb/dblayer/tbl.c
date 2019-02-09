@@ -36,10 +36,10 @@ for(int i=p;i<p+n;i++)
 void substr(char *string,char *retstr,int pos,int length)
 {
 
-    int c=0;
+    int c=pos;
     while(c<length)
     {
-        retstr[c] = string[c+pos];
+        retstr[c-pos] = string[c];
         c++;
     }    
 }
@@ -164,7 +164,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         insertSTR(pageBuf,noOfRecordS,2);
     }    
       int index;
-      char indexs[5];
+      char indexs[2];
     freeSpace = freeSpace-strlen(record);
     noOfRecord = noOfRecord-1000;
     if((noOfRecord)==0){
@@ -187,6 +187,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     EncodeInt(noOfRecord,noOfRecordS);
     insertSTR(pageBuf,freeSpaceS,0);
     insertSTR(pageBuf,noOfRecordS,2);
+    printf("%s\n",pageBuf);
     // strcpy(*pageBuf,BUFFER);
     retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
     if(retval==PFE_OK)
