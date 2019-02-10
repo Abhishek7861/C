@@ -92,19 +92,17 @@ Schema *loadCSV() {
         memset(record, 0, sizeof(record));
         printf("rid:%d\n",rid);
 
-	// int population = atoi(tokens[2]);
-    // printf("%d\n",population);
+	int population = atoi(tokens[2]);
+    printf("%d\n",population);
     // AM_InsertEntry(population,rid);
-	// checkerr(err);
+	checkerr(err);
     }
-    // rid =  Table_Insert(tbl, record, len, &rid);
-    // printf("INSETRED A PAGE\n");
-    //  int indexFD = tbl->FileDesc;
-    //  fclose(fp);
-    //  Table_Close(tbl);
-    //  PF_CloseFile(indexFD);
-    //  err = Table_Open(dbname, sch, true,&tbl);
-    //  Table_Scan(tbl);
+     int indexFD = tbl->FileDesc;
+     fclose(fp);
+     Table_Close(tbl);
+     PF_CloseFile(indexFD);
+     err = Table_Open(dbname, sch, true,&tbl);
+     Table_Scan(tbl);
     //  checkerr(err);
      printf("DONE\n");
      return sch;

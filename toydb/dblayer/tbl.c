@@ -23,10 +23,10 @@ int  getNthSlotOffset(int slot, char* pageBuf);
    Returns 0 on success and a negative error code otherwise.
    If successful, it returns an initialized Table*.
  */
-void insertSTR(char* a,char* b,int p)
+void insertSTR(char* a,char* b,int p,int l)
 {
-int n = strlen(b);
-for(int i=p;i<p+n;i++)
+int n = l;
+for(int i=p;i<n;i++)
 {
     a[i]=b[i-p];
 }
@@ -75,19 +75,6 @@ int Table_Open(char *dbname, Schema *schema, bool overwrite, Table **ptable)
 }
 
 void Table_Close(Table *tbl) {
-    for(int i=0;i<tbl->pages;i++)
-        {
-           int retval = PF_UnfixPage(tbl->FileDesc,i,tbl->dirtypageNUM[i]);
-           if(retval!=PFE_OK)
-           {
-               printf("ERROR UNFIXING PAGE\n");
-           }
-           else
-           {
-               printf("FIXED PAGE %d\n",i);
-           }
-           
-        }
     int retval = PF_CloseFile(tbl->FileDesc);
     if(retval!=PFE_OK)
     {
@@ -136,8 +123,8 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         EncodeShort(noOfRecord,noOfRecordS);
         noOfRecord = DecodeShort(noOfRecordS);
         printf("%d\n",noOfRecord);
-        insertSTR(pageBuf,freeSpaceS,0);
-        insertSTR(pageBuf,noOfRecordS,2);
+        insertSTR(pageBuf,freeSpaceS,0,2);
+        insertSTR(pageBuf,noOfRecordS,2,4);
         // printf("%s\n",pageBuf);    
         }
     else
@@ -152,7 +139,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
          noOfRecord = (int)DecodeShort(b);
     }
     
-    if((freeSpace-1000)<(strlen(record)+252))
+    if((freeSpace-1000)<(strlen(record)+400))
     {
         retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
         if(retval==PFE_OK)
@@ -185,8 +172,8 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         memset(pageBuf,' ',4000);
         EncodeShort(freeSpace,freeSpaceS);
         EncodeShort(noOfRecord,noOfRecordS);
-        insertSTR(pageBuf,freeSpaceS,0);
-        insertSTR(pageBuf,noOfRecordS,2);
+        insertSTR(pageBuf,freeSpaceS,0,2);
+        insertSTR(pageBuf,noOfRecordS,2,4);
         }
         
     }    
@@ -195,32 +182,34 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     freeSpace = freeSpace-strlen(record);
     printf("FREE Space :%d\n",freeSpace);
     noOfRecord = noOfRecord-1000;
+    printf("NO of record %d\n",noOfRecord);
     if((noOfRecord)==0){
         index = MAX_PAGE_SIZE-strlen(record);
         EncodeShort(index,indexs);
-        insertSTR(pageBuf,record,index);
-        insertSTR(pageBuf,indexs,4);
+        insertSTR(pageBuf,record,index,index+strlen(record));
+        insertSTR(pageBuf,indexs,4,6);
     }
     else
     {
         substr(pageBuf,indexs,4+((noOfRecord-1)*2),2);
         index = DecodeShort(indexs);
         index = index-strlen(record)-1000;
-        insertSTR(pageBuf,record,index);
+        insertSTR(pageBuf,record,index,index+strlen(record));
         EncodeShort(index,indexs);
-        insertSTR(pageBuf,indexs,4+(noOfRecord*2));
+        insertSTR(pageBuf,indexs,4+(noOfRecord*2),6+(noOfRecord*2));
     }
     char buf[2];
     EncodeShort(freeSpace, buf);
     int l = DecodeShort(buf);
     // printf("%d \n", l);
     noOfRecord = (noOfRecord+1000)+1;
+    printf("NO of record %d\n",noOfRecord);
     // EncodeShort(freeSpace,freeSpaceS);
     EncodeShort(noOfRecord,noOfRecordS);
     // freeSpace = DecodeShort(freeSpaceS);
     // printf("%d\n",freeSpace);
-    insertSTR(pageBuf,buf,0);
-    insertSTR(pageBuf,noOfRecordS,2);
+    insertSTR(pageBuf,buf,0,2);
+    insertSTR(pageBuf,noOfRecordS,2,4);
     printf("%s\n",pageBuf);
     // strcpy(*pageBuf,BUFFER);
     retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
@@ -263,50 +252,76 @@ int Table_Get(Table *tbl, RecId rid, byte *record, int maxlen) {
 }
 
 void Table_Scan(Table *tbl) {
-    int errVal;
     int fileDes = tbl->FileDesc;
-    int pageNum = 0;
-    int pages = tbl->pages;
-    char BUFFER[MAX_PAGE_SIZE+2];
-    char *tokens[4000];
-    int i=0;
-    char string[100];
-    char **pageBuf = &BUFFER;
-    printf("%s:%s:%s\n",tbl->schema->columns[0]->name,tbl->schema->columns[1]->name,tbl->schema->columns[2]->name);
-    errVal = PF_GetFirstPage(fileDes,&pageNum,pageBuf);
-    strcpy(BUFFER,*pageBuf);
-    // strcat(BUFFER,"<>");
-        // printf("%s\n",BUFFER);
-        // printf("HELLO\n");
-    int n = split(BUFFER, "~", tokens);
-    // memset(BUFFER, 0, sizeof(BUFFER));
-    while(tokens[i]!=NULL){
-        strcpy(string,tokens[i]);
-        tokens[i++]=NULL;
-        printf("%s\n",string);
-    }
-    // memset(BUFFER, 0, sizeof(BUFFER));
-    for(i=pageNum;i<=pageNum;i++)
+    int pageNum = 1;
+    char *pageBuf=(char*)malloc(sizeof(char)*MAX_PAGE_SIZE);
+    int freeSpace=0;
+    int noOfRecord=0;
+    char freeSpaceS[2]={0};
+    char noOfRecordS[2]={0};
+
+    int retval = PF_GetFirstPage(fileDes,&pageNum,&pageBuf);
+    if(retval!=PFE_OK)
     {
-        errVal = PF_GetNextPage(fileDes,&pageNum,pageBuf);
-        if(errVal==PFE_OK)
-        {
-            strcpy(BUFFER,*pageBuf);
-            // printf("%s\n",BUFFER);
-                n = split(BUFFER, "~", tokens);
-            while(tokens[i]!=NULL){
-                 strcpy(string,tokens[i]);
-                tokens[i++]=NULL;
-                printf("%s\n",string);
-            } 
-            // memset(BUFFER, 0, sizeof(BUFFER));
-        }
-        else
-        {
-            printf("ERROR GETTING NEXT PAGE\n");
-        }
-        
+        printf("ERROR READING PAGE\n");
+
     }
+        char a[2];
+        substr(pageBuf,a,2,4);
+        noOfRecord = (int)DecodeShort(a);
+        noOfRecord = noOfRecord-1000;
+        for(int i=0;i<(noOfRecord);i++){
+        char indexS[2];
+        int index;
+        char record[100];
+        substr(pageBuf,indexS,4+(i*2),6+(i*2));
+        // noOfRecord = (int)DecodeShort(a);
+        index = (int)DecodeShort(indexS);
+        int i=0;
+        while(pageBuf[index]!='~')
+        {
+            record[i++] = pageBuf[index++];
+        }
+        record[i]='\0';
+        printf("%s\n",record);
+        printf("index %d\n",index);
+        printf("no of record: %d\n",noOfRecord);
+        }
+    while(1)
+    {
+        int retval = PF_GetNextPage(fileDes,&pageNum,&pageBuf);
+    if(retval!=PFE_OK)
+    {
+        printf("ERROR READING PAGE\n");
+        break;
+    }
+        char a[2];
+        substr(pageBuf,a,2,4);
+        noOfRecord = (int)DecodeShort(a);
+        noOfRecord = noOfRecord-1000;
+        for(int i=0;i<(noOfRecord);i++){
+        char indexS[2];
+        int index;
+        char record[100];
+        substr(pageBuf,indexS,4+(i*2),6+(i*2));
+        // noOfRecord = (int)DecodeShort(a);
+        index = (int)DecodeShort(indexS);
+        int i=0;
+        while(pageBuf[index]!='~')
+        {
+            record[i++] = pageBuf[index++];
+        }
+        record[i]='\0';
+        printf("%s\n",record);
+        printf("index %d\n",index);
+        printf("no of record: %d\n",noOfRecord);
+        }
+    }
+        for(int i=0;i<pageNum;i++)
+        {
+          printf("unfix :%d\n",i); 
+        }
+
     printf("DONE\n");
     // For each page obtained using PF_GetFirstPage and PF_GetNextPage
     //    for each record in that page,
