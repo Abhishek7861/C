@@ -95,13 +95,15 @@ Schema *loadCSV() {
 	int population = atoi(tokens[2]);
     printf("%d\n",population);
     // AM_InsertEntry(population,rid);
-	checkerr(err);
+	// checkerr(err);
     }
      int indexFD = tbl->FileDesc;
      fclose(fp);
      Table_Close(tbl);
      PF_CloseFile(indexFD);
      err = Table_Open(dbname, sch, true,&tbl);
+     
+     Table_Get(tbl,311,record,len);
      Table_Scan(tbl);
     //  checkerr(err);
      printf("DONE\n");

@@ -216,9 +216,9 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     printf("UNFIXED PAGE %d\n",pageNum);
     if(retval==PFE_OK)
     {
-        int a = *rid;
-        a++;
-        return  a;
+        int page = pageNum<<8;
+        page = page+(noOfRecord-1000);
+        return  page;
     }
     else
     {
@@ -239,8 +239,31 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
   Returns the number of bytes copied.
  */
 int Table_Get(Table *tbl, RecId rid, byte *record, int maxlen) {
-    int slot = rid & 0xFFFF;
-    int pageNum = rid >> 16;
+    int pageNum = rid >> 8;
+    int recordnumber = rid-(pageNum<<8);
+    int fileDes = tbl->FileDesc;
+    char *pageBuf = (char*)malloc(sizeof(char)*MAX_PAGE_SIZE);
+    int retval = PF_GetThisPage(fileDes,pageNum,&pageBuf);
+        char indexS[2];
+        int index;
+        // char record[100];
+        substr(pageBuf,indexS,4+(recordnumber*2),6+(recordnumber*2));
+        // noOfRecord = (int)DecodeShort(a);
+        index = (int)DecodeShort(indexS);
+        int i=0;
+        while(pageBuf[index]!='~')
+        {
+            record[i++] = pageBuf[index++];
+        }
+        record[i]='\0';
+        printf("%s\n",record);
+        retval = PF_UnfixPage(tbl->FileDesc,pageNum,false);
+        if(retval==PFE_OK)
+            printf("unfixed page %d not written to disk\n",pageNum); 
+        else
+            printf("error unfixing page\n");
+        
+
 
     // UNIMPLEMENTED;
     // PF_GetThisPage(pageNum)
