@@ -104,7 +104,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     char srid[3];
 
     int retval = PF_GetFirstPage(fileDes,&pageNum,&pageBuf);
-    printf("err code %d\n",retval);
+    // printf("err code %d\n",retval);
     if(retval!=PFE_OK)
     {  
         retval = PF_AllocPage(fileDes,&pageNum,&pageBuf);
@@ -119,10 +119,10 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         noOfRecord = 1000;
         EncodeShort(freeSpace,freeSpaceS);
         freeSpace = DecodeShort(freeSpaceS);
-        printf("%d\n",freeSpace);
+        // printf("%d\n",freeSpace);
         EncodeShort(noOfRecord,noOfRecordS);
         noOfRecord = DecodeShort(noOfRecordS);
-        printf("%d\n",noOfRecord);
+        // printf("%d\n",noOfRecord);
         insertSTR(pageBuf,freeSpaceS,0,2);
         insertSTR(pageBuf,noOfRecordS,2,4);
         // printf("%s\n",pageBuf);    
@@ -132,7 +132,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         //  strcpy(BUFFER,*pageBuf);BUFFER
         char a[2];
         char b[2];
-        printf("not in first alloc\n");
+        // printf("not in first alloc\n");
          substr(pageBuf,a,0,2);
          substr(pageBuf,b,2,4);
          freeSpace = (int)DecodeShort(a);
@@ -146,11 +146,11 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
         {
             printf("unfixed page no: %d\n",pageNum);
         }
-        printf("get new page\n");
+        // printf("get new page\n");
         int retval = PF_GetNextPage(fileDes,&pageNum,&pageBuf);
         if(retval==PFE_OK)
             {
-         printf("working with new page\n");
+        //  printf("working with new page\n");
          char a[2];
          char b[2];
          substr(pageBuf,a,0,2);
@@ -166,7 +166,7 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
             printf("ERROR GETTING NEW PAGE\n");
             return -1;
         }
-        printf("got new page\n");
+        // printf("got new page\n");
         freeSpace=(MAX_PAGE_SIZE+1000)-4;
         noOfRecord = 1000;
         memset(pageBuf,' ',4000);
@@ -180,9 +180,9 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
       int index;
       char indexs[2];
     freeSpace = freeSpace-strlen(record);
-    printf("FREE Space :%d\n",freeSpace);
+    // printf("FREE Space :%d\n",freeSpace);
     noOfRecord = noOfRecord-1000;
-    printf("NO of record %d\n",noOfRecord);
+    // printf("NO of record %d\n",noOfRecord);
     if((noOfRecord)==0){
         index = MAX_PAGE_SIZE-strlen(record);
         EncodeShort(index,indexs);
@@ -203,14 +203,14 @@ int Table_Insert(Table *tbl, byte *record, int len, RecId *rid) {
     int l = DecodeShort(buf);
     // printf("%d \n", l);
     noOfRecord = (noOfRecord+1000)+1;
-    printf("NO of record %d\n",noOfRecord);
+    // printf("NO of record %d\n",noOfRecord);
     // EncodeShort(freeSpace,freeSpaceS);
     EncodeShort(noOfRecord,noOfRecordS);
     // freeSpace = DecodeShort(freeSpaceS);
     // printf("%d\n",freeSpace);
     insertSTR(pageBuf,buf,0,2);
     insertSTR(pageBuf,noOfRecordS,2,4);
-    printf("%s\n",pageBuf);
+    // printf("%s\n",pageBuf);
     // strcpy(*pageBuf,BUFFER);
     retval = PF_UnfixPage(tbl->FileDesc,pageNum,true);
     printf("UNFIXED PAGE %d\n",pageNum);
@@ -263,7 +263,7 @@ void Table_Scan(Table *tbl) {
     int retval = PF_GetFirstPage(fileDes,&pageNum,&pageBuf);
     if(retval!=PFE_OK)
     {
-        printf("ERROR READING PAGE\n");
+        printf("END OF PAGES\n");
 
     }
         char a[2];
@@ -284,15 +284,15 @@ void Table_Scan(Table *tbl) {
         }
         record[i]='\0';
         printf("%s\n",record);
-        printf("index %d\n",index);
-        printf("no of record: %d\n",noOfRecord);
+        // printf("index %d\n",index);
+        // printf("no of record: %d\n",noOfRecord);
         }
     while(1)
     {
         int retval = PF_GetNextPage(fileDes,&pageNum,&pageBuf);
     if(retval!=PFE_OK)
     {
-        printf("ERROR READING PAGE\n");
+        printf("PAGE NOT EXISTS\n");
         break;
     }
         char a[2];
@@ -313,13 +313,14 @@ void Table_Scan(Table *tbl) {
         }
         record[i]='\0';
         printf("%s\n",record);
-        printf("index %d\n",index);
-        printf("no of record: %d\n",noOfRecord);
+        // printf("index %d\n",index);
+        // printf("no of record: %d\n",noOfRecord);
         }
     }
-        for(int i=0;i<pageNum;i++)
+        for(int i=0;i<=pageNum;i++)
         {
-          printf("unfix :%d\n",i); 
+          PF_UnfixPage(tbl->FileDesc,i,false);
+          printf("unfixed page %d not written to disk\n",i); 
         }
 
     printf("DONE\n");

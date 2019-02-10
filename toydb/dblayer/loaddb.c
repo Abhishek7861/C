@@ -87,7 +87,7 @@ Schema *loadCSV() {
         if(rid==(-1))
         printf("CANT INSERT A RECORD\n");
         else
-        printf("INSERTED A RECORD\n");
+        printf("INSERTED :: %s\n",record);
         memset(check, 0, sizeof(check));
         memset(record, 0, sizeof(record));
         printf("rid:%d\n",rid);
