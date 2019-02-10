@@ -40,6 +40,9 @@ int encode(Schema *sch, char **fields, byte *record, int spaceLeft) {
 }
 
 Schema *loadCSV() {
+    int ridarray[500];
+    int populationarray[500];
+    int index=0;
     // Open csv file, parse schema
     FILE *fp = fopen(CSV_NAME, "r");
     if (!fp) {
@@ -92,21 +95,57 @@ Schema *loadCSV() {
         memset(record, 0, sizeof(record));
         printf("rid:%d\n",rid);
 
-	int population = atoi(tokens[2]);
-    printf("%d\n",population);
+	    int population = atoi(tokens[2]);
+        printf("%d\n",population);
+        ridarray[index]=rid-1;
+        populationarray[index++]=population;
     // AM_InsertEntry(population,rid);
 	// checkerr(err);
     }
      int indexFD = tbl->FileDesc;
      fclose(fp);
      Table_Close(tbl);
-     PF_CloseFile(indexFD);
-     err = Table_Open(dbname, sch, true,&tbl);
+     int a = PF_CloseFile(indexFD);
+     if(a==PFE_OK)
+     printf("SUCCESSFULLY CLOSED FILE\n");
+    //  err = Table_Open(dbname, sch, true,&tbl);
      
-     Table_Get(tbl,311,record,len);
-     Table_Scan(tbl);
+    //  Table_Get(tbl,311,record,len);
+    //  Table_Scan(tbl);
+    //  PF_CloseFile(indexFD);
+    //  Table_Close(tbl);
     //  checkerr(err);
-     printf("DONE\n");
+     printf("DONE FORMING SLOTTED PAGE STRUCTURE\n");
+
+    int fd;	/* file descriptor for the index */
+    char fname[80];	/* file name */
+    int recnum;	/* record number */
+    int sd;	/* scan descriptor */
+    int numrec;	/* # of records retrieved */
+    int testval;
+    char * RELNAME = "dbindex";
+    /* init */
+    printf("initializing\n");
+    PF_Init();
+
+    /* create index */
+    printf("creating index\n");
+    AM_CreateIndex(RELNAME,0,'i',sizeof(int));
+
+    /* open the index */
+    printf("opening index\n");
+    sprintf(fname,"%s.0",RELNAME);
+    fd = PF_OpenFile(fname);
+
+    /* first, make sure that simple deletions work */
+    printf("inserting into index\n");
+    for (recnum=0; recnum < index; recnum++) {
+       int a= AM_InsertEntry(fd,'i',sizeof(int),(char *)&populationarray[recnum],ridarray[recnum]);
+    }
+     printf("DONE FORMING INDEX\n");
+
+    PF_CloseFile(fd);
+
      return sch;
 }
 

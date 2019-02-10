@@ -17,7 +17,7 @@ printRow(void *callbackObj, RecId rid, byte *row, int len) {
 }
 
 #define DB_NAME "toydb"
-#define INDEX_NAME "data.db.0"
+#define INDEX_NAME "dbindex.0"
 	 
 void
 index_scan(Table *tbl, Schema *schema, int indexFD, int op, int value) {
@@ -37,20 +37,52 @@ int
 main(int argc, char **argv) {
     char *schemaTxt = "Country:varchar,Capital:varchar,Population:int";
     Schema *schema = parseSchema(schemaTxt);
-    Table *tbl;
+    Table *tbl = (Table*)malloc(sizeof(Table));
     char *dbname  = "toydb";
-    int err = Table_Open(dbname, schema, true,&tbl);
     if (argc == 2 && *(argv[1]) == 's') {
-        Table_Scan(tbl);
+    int err = Table_Open(dbname, schema, true,&tbl);
+     Table_Scan(tbl);
+     Table_Close(tbl);
+     PF_CloseFile(tbl->FileDesc);
     } else {
 	// index scan by default
 	int indexFD = PF_OpenFile(INDEX_NAME);
-	checkerr(indexFD);
-
-	// Ask for populations less than 100000, then more than 100000. Together they should
-	// yield the complete database.
-	index_scan(tbl, schema, indexFD, LESS_THAN_EQUAL, 100000);
-	index_scan(tbl, schema, indexFD, GREATER_THAN, 100000);
+	int recnum= 0;
+    int count1=0;
+    int count2=0;
+    int array1[500]; //population <100000
+    int array2[500]; //population >100000
+    char *pop="100000";
+    int sd = AM_OpenIndexScan(indexFD,'i',sizeof(int),2,pop);
+    while((recnum=AM_FindNextEntry(sd))>= 0) {
+        printf("%d\n",recnum);
+        array1[count1] = recnum;
+        count1++;
     }
-    Table_Close(tbl);
+    printf("retrieved %d records\n",count1);
+
+    sd = AM_OpenIndexScan(indexFD,'i',sizeof(int),3,pop);
+    while((recnum=AM_FindNextEntry(sd))>= 0) {
+        printf("%d\n",recnum);
+        array2[count2] = recnum;
+        count2++;
+    }
+    printf("retrieved %d records\n",count2);
+    AM_CloseIndexScan(sd);
+    PF_CloseFile(indexFD);
+    
+    printf("more than 100000\n");
+    int err = Table_Open(dbname, schema, true,&tbl);
+    char record[4000];
+    for(int i=0;i<count1;i++)
+        Table_Get(tbl,array1[i],record,MAX_TOKENS);
+    printf("all\n");
+
+    for(int i=0;i<count2;i++)
+        Table_Get(tbl,array2[i],record,MAX_TOKENS);
+    printf("all\n");
+     Table_Close(tbl);
+     PF_CloseFile(tbl->FileDesc);
+    printf("less than 100000\n");
+    }
 }
